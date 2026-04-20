@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Chamados TI | BI Corporativo</title>
+<link rel="stylesheet" href="./libs/fonts.css">
+<!-- Corrigir ordem dos scripts: Chart.js deve vir antes do código que o utiliza -->
+<script src="./libs/chart.umd.min.js"></script>
+<script src="./libs/xlsx.full.min.js"></script>
+<style>
+/* ===================================================================
+   DESIGN TOKENS
+=================================================================== */
+:root {
+  --sw: 260px; --sc: 72px;
+  --brand-900:#001f3f; --brand-700:#002f5c; --brand-500:#004a94;
+  --brand-400:#0060bf; --brand-300:#3d8eff; --brand-100:#e8f0fe;
+  --success:#059669; --success-bg:#d1fae5; --success-lt:#ecfdf5;
+  --danger:#dc2626;  --danger-bg:#fee2e2;  --danger-lt:#fef2f2;
+  --warning:#d97706; --warning-bg:#fef3c7; --warning-lt:#fffbeb;
+  --info:#3d8eff;    --info-bg:#e8f0fe;    --info-lt:#eff6ff;
+  --purple:#7c3aed;  --purple-bg:#ede9fe;
+  --orange:#ea580c;  --orange-bg:#ffedd5;
+  --neutral:#64748b; --neutral-bg:#f1f5f9;
+  --bg:#f0f2f6; --surface:#fff; --surface2:#f8fafc;
+  --border:#e2e8f0; --border2:#cbd5e1;
+  --text-primary:#0f172a; --text-secondary:#475569; --text-muted:#94a3b8;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 12px 30px rgba(0,0,0,.12);
+  --sb-from:#001a38; --sb-to:#002f5c;
+  --sb-text:#94a3b8; --sb-active:#3d8eff;
+  --radius:12px; --radius-sm:8px; --tr:.2s ease;
+}
+[data-theme="dark"] {
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2333;
+  --border:#30363d; --border2:#21262d;
+  --text-primary:#e6edf3; --text-secondary:#8b949e; --text-muted:#6e7681;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3); --shadow:0 4px 12px rgba(0,0,0,.4);
+  --shadow-lg:0 12px 30px rgba(0,0,0,.6);
+  --sb-from:#0a0f1a; --sb-to:#0d1622;
+  --brand-100:rgba(61,142,255,.1);
+  --success-bg:rgba(5,150,105,.15); --danger-bg:rgba(220,38,38,.15);
+  --warning-bg:rgba(217,119,6,.15); --info-bg:rgba(61,142,255,.12);
+  --purple-bg:rgba(124,58,237,.15); --orange-bg:rgba(234,88,12,.15);
+  --neutral-bg:rgba(100,116,139,.15);
+}
+/* ===================================================================
+   RESET & BASE
+=================================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text-primary);display:flex;height:100vh;overflow:hidden;transition:background var(--tr),color var(--tr)}
+button{cursor:pointer;font-family:inherit}
+select,input{font-family:inherit}
+.hidden{display:none!important}
+/* ===================================================================
+   SIDEBAR
+=================================================================== */
+aside{width:var(--sw);background:linear-gradient(170deg,var(--sb-from),var(--sb-to));display:flex;flex-direction:column;flex-shrink:0;transition:width .3s ease;z-index:200;position:relative;overflow:hidden}
+aside.collapsed{width:var(--sc)}
+.sb-header{padding:1.5rem 1.25rem 1.25rem;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.07);min-height:76px}
+.sb-logo{width:38px;height:38px;background:var(--brand-300);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:.8rem;color:#fff;letter-spacing:.5px}
+.sb-brand{opacity:1;transition:opacity .2s;white-space:nowrap}
+aside.collapsed .sb-brand{opacity:0;pointer-events:none}
+.sb-brand h1{font-size:.92rem;font-weight:800;color:#fff;letter-spacing:.5px}
+.sb-brand p{font-size:.62rem;color:var(--text-muted);margin-top:1px}
+.nav-links{padding:.75rem;flex-grow:1;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-item{padding:.65rem .85rem;display:flex;align-items:center;gap:10px;color:var(--sb-text);cursor:pointer;transition:all var(--tr);font-size:.78rem;font-weight:600;border-radius:var(--radius-sm);white-space:nowrap;position:relative;user-select:none}
+.nav-item svg{flex-shrink:0}
+.nav-item .nav-lbl{opacity:1;transition:opacity .2s}
+aside.collapsed .nav-lbl{opacity:0;pointer-events:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:rgba(61,142,255,.18);color:var(--brand-300);font-weight:700}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--brand-300);border-radius:0 3px 3px 0}
+.sb-section{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(148,163,184,.5);padding:.6rem .85rem .3rem;white-space:nowrap}
+aside.collapsed .sb-section{opacity:0}
+.sb-footer{padding:1rem;border-top:1px solid rgba(255,255,255,.07);font-size:.65rem;color:#4b5563;white-space:nowrap}
+aside.collapsed .sb-footer-txt{opacity:0}
+.collapse-btn{position:absolute;right:-13px;top:24px;width:26px;height:26px;background:var(--surface);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;box-shadow:var(--shadow-sm);transition:all var(--tr);color:var(--text-secondary)}
+.collapse-btn:hover{background:var(--brand-100);color:var(--brand-500)}
+/* ===================================================================
+   MAIN LAYOUT
+=================================================================== */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+/* ===================================================================
+   HEADER
+=================================================================== */
+header{background:var(--surface);padding:0 1.75rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);min-height:68px;flex-shrink:0;gap:1rem}
+.hdr-left{display:flex;align-items:center;gap:14px}
+#view-title{font-size:1.05rem;font-weight:800;color:var(--brand-700);transition:color var(--tr)}
+[data-theme="dark"] #view-title{color:var(--brand-300)}
+#data-count{font-size:.72rem;color:var(--text-muted);font-family:'DM Mono',monospace}
+.filter-badge{background:var(--brand-300);color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px;display:none}
+.filter-badge.visible{display:inline-block}
+.hdr-actions{display:flex;align-items:center;gap:6px}
+/* ===================================================================
+   BUTTONS
+=================================================================== */
+.btn{padding:.55rem 1rem;border-radius:var(--radius-sm);font-size:.76rem;font-weight:700;border:none;transition:all var(--tr);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-ghost{background:var(--surface2);border:1.5px solid var(--border);color:var(--text-secondary)}
+.btn-ghost:hover{border-color:var(--brand-300);color:var(--brand-500);background:var(--brand-100)}
+.btn-primary{background:var(--brand-700);color:#fff;box-shadow:0 4px 12px rgba(0,51,102,.25)}
+.btn-primary:hover{background:var(--brand-500)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{filter:brightness(1.1)}
+.btn-icon{padding:.55rem;border-radius:var(--radius-sm);background:var(--surface2);border:1.5px solid var(--border);color:var(--text-secondary);display:flex;align-items:center}
+.btn-icon:hover{border-color:var(--brand-300);color:var(--brand-500)}
+/* ===================================================================
+   FILTERS BAR
+=================================================================== */
+.filters-bar{display:flex;gap:.5rem;padding:.6rem 1.75rem;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap}
+.filters-lbl{font-size:.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.filter-group{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.filter-group label{font-size:.65rem;color:var(--text-muted);font-weight:600;white-space:nowrap}
+select,.filter-date{padding:.42rem .75rem;border-radius:var(--radius-sm);border:1.5px solid var(--border);font-size:.74rem;font-weight:600;background:var(--surface2);color:var(--text-primary);transition:border-color var(--tr)}
+select:focus,.filter-date:focus{outline:none;border-color:var(--brand-300)}
+select.active,.filter-date.active{border-color:var(--brand-300);background:var(--brand-100);color:var(--brand-700)}
+[data-theme="dark"] select.active,[data-theme="dark"] .filter-date.active{background:rgba(61,142,255,.12);color:var(--brand-300)}
+.filter-date{min-width:130px;color-scheme:light dark}
+/* ===================================================================
+   CONTENT AREA
+=================================================================== */
+.content-area{padding:1.5rem 1.75rem;overflow-y:auto;flex:1;scroll-behavior:smooth}
+/* ===================================================================
+   KPI GRID
+=================================================================== */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:.85rem;margin-bottom:1.5rem}
+.kpi-card{background:var(--surface);border-radius:var(--radius);padding:1.1rem 1.25rem;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:transform var(--tr),box-shadow var(--tr),border-color var(--tr)}
+.kpi-card.clickable{cursor:pointer}
+.kpi-card.clickable:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--brand-300)}
+.kpi-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:.7rem}
+.kpi-icon.i-blue{background:var(--info-bg)}
+.kpi-icon.i-green{background:var(--success-bg)}
+.kpi-icon.i-yellow{background:var(--warning-bg)}
+.kpi-icon.i-indigo{background:var(--info-bg)}
+.kpi-icon.i-red{background:var(--danger-bg)}
+.kpi-icon.i-orange{background:var(--orange-bg)}
+.kpi-icon.i-gray{background:var(--neutral-bg)}
+.kpi-lbl{font-size:.6rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:.5px;margin-bottom:.25rem}
+.kpi-val{font-size:1.75rem;font-weight:800;line-height:1;font-family:'DM Mono',monospace}
+.kpi-val.c-blue{color:var(--brand-500)}
+.kpi-val.c-green{color:var(--success)}
+.kpi-val.c-yellow{color:var(--warning)}
+.kpi-val.c-indigo{color:#4f46e5}
+.kpi-val.c-red{color:var(--danger)}
+.kpi-val.c-orange{color:var(--orange)}
+.kpi-val.c-gray{color:var(--neutral)}
+.kpi-sub{font-size:.66rem;margin-top:5px;font-weight:600;color:var(--text-muted)}
+/* ===================================================================
+   BI GRID
+=================================================================== */
+.bi-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.bi-row.cols-3{grid-template-columns:1fr 1fr 1fr}
+.bi-full{margin-bottom:1rem}
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1.25rem;box-shadow:var(--shadow-sm)}
+.card-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.card-title{font-size:.82rem;font-weight:800;color:var(--text-primary)}
+.card-sub{font-size:.66rem;color:var(--text-muted);margin-top:2px}
+/* ===================================================================
+   CHART CONTAINERS
+=================================================================== */
+.chart-wrap{position:relative;height:260px}
+.chart-wrap.h-200{height:200px}
+.chart-wrap.h-300{height:300px}
+.chart-wrap.h-340{height:340px}
+.chart-wrap canvas{display:block}
+/* ===================================================================
+   RANK LIST
+=================================================================== */
+.rank-list{display:flex;flex-direction:column;gap:.5rem;max-height:260px;overflow-y:auto}
+.rank-item{cursor:pointer;padding:.45rem .55rem;border-radius:var(--radius-sm);transition:all var(--tr)}
+.rank-item:hover{background:var(--surface2)}
+.rank-row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:.76rem;font-weight:700;color:var(--text-primary)}
+.rank-cnt{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--text-secondary)}
+.rank-detail{font-size:.64rem;color:var(--text-muted);margin-bottom:4px}
+.prog-bar{height:4px;background:var(--surface2);border-radius:10px;overflow:hidden}
+.prog-fill{height:100%;background:var(--brand-500);border-radius:10px;transition:width .7s cubic-bezier(.22,1,.36,1)}
+/* ===================================================================
+   BOTTLENECK
+=================================================================== */
+.bn-list{display:flex;flex-direction:column;gap:.45rem}
+.bn-item{display:flex;justify-content:space-between;align-items:center;padding:.65rem .8rem;background:var(--danger-bg);border-left:3px solid var(--danger);border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:.72rem;cursor:pointer;transition:all var(--tr)}
+[data-theme="dark"] .bn-item{background:rgba(220,38,38,.1)}
+.bn-item:hover{background:rgba(220,38,38,.18)}
+.bn-item strong{font-weight:700;color:var(--text-primary)}
+.bn-item small{color:var(--text-muted);font-size:.64rem}
+.bn-count{font-size:1.05rem;font-weight:800;color:var(--danger);font-family:'DM Mono',monospace}
+/* ===================================================================
+   BADGES
+=================================================================== */
+.badge{padding:2px 8px;border-radius:20px;font-size:.6rem;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.6}
+.badge.s-enc{background:var(--success-bg);color:var(--success)}
+.badge.s-sus{background:var(--warning-bg);color:var(--warning)}
+.badge.s-enc2{background:var(--info-bg);color:var(--info)}
+.badge.s-can{background:var(--danger-bg);color:var(--danger)}
+.badge.s-abert{background:var(--purple-bg);color:var(--purple)}
+.badge.s-sla-ok{background:var(--success-bg);color:var(--success)}
+.badge.s-sla-out{background:var(--orange-bg);color:var(--orange)}
+/* ===================================================================
+   TABLE
+=================================================================== */
+.explorer-top{display:flex;gap:.65rem;margin-bottom:.85rem;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+#tbl-search{width:100%;padding:.48rem .8rem .48rem 2rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.76rem;background:var(--surface);color:var(--text-primary);transition:border-color var(--tr)}
+#tbl-search:focus{outline:none;border-color:var(--brand-300)}
+#tbl-search::placeholder{color:var(--text-muted)}
+.tbl-wrap{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:auto;box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th{background:var(--surface2);padding:.65rem .8rem;text-align:left;color:var(--text-secondary);font-weight:700;border-bottom:1px solid var(--border);font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--brand-500)}
+th.sorted{color:var(--brand-500)}
+td{padding:.6rem .8rem;border-bottom:1px solid var(--border);font-size:.74rem;color:var(--text-primary)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+/* ===================================================================
+   SUB TABS (explorer)
+=================================================================== */
+.sub-tabs{display:flex;gap:4px;margin-bottom:.85rem;flex-wrap:wrap}
+.sub-tab{padding:.38rem .85rem;border-radius:20px;font-size:.72rem;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-secondary);transition:all var(--tr)}
+.sub-tab:hover{border-color:var(--brand-300);color:var(--brand-500)}
+.sub-tab.active{background:var(--brand-700);color:#fff;border-color:var(--brand-700)}
+/* ===================================================================
+   PAGINATION
+=================================================================== */
+.pager{display:flex;align-items:center;justify-content:space-between;padding:.65rem .85rem;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 var(--radius) var(--radius);font-size:.72rem;color:var(--text-muted);flex-wrap:wrap;gap:6px}
+.pager-btns{display:flex;gap:4px}
+.pg-btn{padding:3px 9px;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-secondary);font-size:.72rem;font-weight:600;transition:all var(--tr)}
+.pg-btn:hover:not(:disabled){border-color:var(--brand-300);color:var(--brand-500)}
+.pg-btn.active{background:var(--brand-700);color:#fff;border-color:var(--brand-700)}
+.pg-btn:disabled{opacity:.4;cursor:not-allowed}
+/* ===================================================================
+   OBSERVATIONS TABLE
+=================================================================== */
+.obs-table{width:100%;border-collapse:collapse;font-size:.76rem}
+.obs-table thead th{background:var(--surface2);padding:.6rem .8rem;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;color:var(--text-secondary);font-weight:700;border-bottom:1px solid var(--border)}
+.obs-table tbody td{padding:.55rem .8rem;border-bottom:1px solid var(--border)}
+.obs-table tbody tr:last-child td{border-bottom:none}
+.obs-table tbody tr:hover td{background:var(--surface2)}
+.obs-bar-inline{display:flex;align-items:center;gap:8px}
+.obs-bar-bg{flex:1;height:6px;background:var(--border);border-radius:10px;overflow:hidden}
+.obs-bar-fill{height:100%;border-radius:10px;background:var(--brand-500)}
+/* ===================================================================
+   SLA METRICS ROW
+=================================================================== */
+.sla-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.8rem;margin-bottom:1rem}
+.sla-metric{background:var(--surface);border-radius:var(--radius);padding:1rem;border:1px solid var(--border);text-align:center}
+.sla-metric .sm-val{font-size:1.6rem;font-weight:800;font-family:'DM Mono',monospace;line-height:1}
+.sla-metric .sm-lbl{font-size:.62rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-top:4px}
+/* ===================================================================
+   ANALYST TABLE
+=================================================================== */
+.analyst-table{width:100%;border-collapse:collapse;font-size:.76rem}
+.analyst-table th{background:var(--surface2);padding:.6rem .75rem;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;color:var(--text-secondary);font-weight:700;border-bottom:1px solid var(--border)}
+.analyst-table td{padding:.55rem .75rem;border-bottom:1px solid var(--border)}
+.analyst-table tbody tr:last-child td{border-bottom:none}
+.analyst-table tbody tr:hover td{background:var(--surface2)}
+.sla-pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.6rem;font-weight:700}
+.sla-good{background:var(--success-bg);color:var(--success)}
+.sla-bad{background:var(--orange-bg);color:var(--orange)}
+/* ===================================================================
+   LOADER
+=================================================================== */
+#loader{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:2000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;backdrop-filter:blur(4px)}
+[data-theme="dark"] #loader{background:rgba(13,17,23,.92)}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top:3px solid var(--brand-500);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-txt{font-size:.82rem;font-weight:700;color:var(--text-secondary)}
+/* ===================================================================
+   UPLOAD
+=================================================================== */
+.upload-area{position:absolute;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:500}
+.upload-card{width:460px;padding:3rem;background:var(--surface);border-radius:20px;box-shadow:var(--shadow-lg);text-align:center;border:2px dashed var(--border2);transition:border-color var(--tr),box-shadow var(--tr)}
+.upload-card.drag-over{border-color:var(--brand-300);box-shadow:0 0 0 4px rgba(61,142,255,.15)}
+.upload-icon-wrap{width:68px;height:68px;border-radius:16px;background:linear-gradient(135deg,var(--brand-700),var(--brand-400));display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 8px 24px rgba(0,51,102,.3)}
+.upload-card h2{font-size:1.3rem;font-weight:900;color:var(--brand-700);letter-spacing:.5px;margin-bottom:.4rem}
+[data-theme="dark"] .upload-card h2{color:var(--brand-300)}
+.upload-card p{color:var(--text-muted);font-size:.82rem;margin-bottom:1.75rem;line-height:1.5}
+.upload-fmt{font-size:.65rem;color:var(--text-muted);margin-top:.75rem;font-family:'DM Mono',monospace}
+/* ===================================================================
+   TOAST
+=================================================================== */
+#toast-cont{position:fixed;bottom:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:7px}
+.toast{padding:.65rem 1rem;border-radius:var(--radius-sm);font-size:.76rem;font-weight:600;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:7px;animation:toastIn .3s ease;min-width:240px;max-width:340px}
+.toast-success{background:var(--success);color:#fff}
+.toast-error{background:var(--danger);color:#fff}
+.toast-info{background:var(--brand-700);color:#fff}
+@keyframes toastIn{from{transform:translateX(80px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(30px)}}
+/* ===================================================================
+   MODAL
+=================================================================== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border-radius:var(--radius);padding:1.75rem;width:min(480px,90vw);max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+.modal-hdr h3{font-size:1rem;font-weight:800;color:var(--text-primary)}
+.modal-close{background:none;border:none;font-size:1.1rem;color:var(--text-muted);padding:2px 6px;border-radius:4px}
+.modal-close:hover{background:var(--surface2);color:var(--text-primary)}
+.modal-stat{display:flex;justify-content:space-between;align-items:center;padding:.65rem .75rem;border-radius:var(--radius-sm);margin-bottom:4px}
+.modal-stat:nth-child(odd){background:var(--surface2)}
+.modal-stat-lbl{font-size:.76rem;color:var(--text-secondary)}
+.modal-stat-val{font-size:.82rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--text-primary)}
+/* ===================================================================
+   EMPTY STATE
+=================================================================== */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:var(--text-muted);font-size:.8rem;gap:8px;text-align:center}
+.empty svg{opacity:.35}
+/* ===================================================================
+   RESPONSIVE
+=================================================================== */
+/* ===================================================================
+   SOURCE TOGGLE (Requisições vs Incidentes)
+=================================================================== */
+.source-toggle{display:flex;gap:4px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:3px}
+.src-btn{display:flex;align-items:center;gap:6px;padding:.38rem .85rem;border-radius:7px;border:none;background:transparent;color:var(--text-secondary);font-size:.74rem;font-weight:700;cursor:pointer;transition:all var(--tr);white-space:nowrap;font-family:inherit}
+.src-btn:hover{background:var(--surface);color:var(--text-primary)}
+.src-btn.active{background:var(--brand-700);color:#fff;box-shadow:0 2px 6px rgba(0,51,102,.25)}
+.src-count{font-size:.62rem;font-weight:800;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:10px;font-family:'DM Mono',monospace;min-width:18px;text-align:center}
+.src-btn:not(.active) .src-count{background:var(--border);color:var(--text-muted)}
+/* ===================================================================
+   SLA KPI extra colours
+=================================================================== */
+.kpi-icon.i-purple{background:var(--purple-bg)}
+.kpi-val.c-purple{color:var(--purple)}
+/* ===================================================================
+   RESPONSIVE
+=================================================================== */
+@media(max-width:1100px){.bi-row{grid-template-columns:1fr}.bi-row.cols-3{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){aside{width:var(--sc);} aside .sb-brand,.nav-lbl,.sb-section,.sb-footer-txt{opacity:0;pointer-events:none}}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">BI</div>
+    <div class="sb-brand">
+      <h1>TI DASHBOARD</h1>
+      <p>Análise de Chamados</p>
+    </div>
+  </div>
+  <button class="collapse-btn" id="collapse-btn" aria-label="Recolher menu">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <nav class="nav-links">
+    <span class="sb-section">VISÃO GERAL</span>
+    <div class="nav-item active" data-tab="dashboard" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-lbl">Dashboard</span>
+    </div>
+    <span class="sb-section">ANÁLISE</span>
+    <div class="nav-item" data-tab="analistas" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="nav-lbl">Analistas</span>
+    </div>
+    <div class="nav-item" data-tab="areas" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+      <span class="nav-lbl">Áreas</span>
+    </div>
+    <div class="nav-item" data-tab="sla" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-lbl">SLA</span>
+    </div>
+    <div class="nav-item" data-tab="trends" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="nav-lbl">Tendências</span>
+    </div>
+    <div class="nav-item" data-tab="observations" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="nav-lbl">Observações</span>
+    </div>
+    <div class="nav-item" data-tab="indicadores" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-lbl">Indicadores</span>
+    </div>
+    <span class="sb-section">DADOS</span>
+    <div class="nav-item" data-tab="explorer" role="button" tabindex="0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      <span class="nav-lbl">Explorador</span>
+    </div>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-footer-txt" id="current-date"></div>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main>
+  <!-- HEADER -->
+  <header>
+    <div class="hdr-left">
+      <span id="view-title">Dashboard</span>
+      <span id="data-count"></span>
+      <span class="filter-badge" id="filter-badge">0 filtros</span>
+    </div>
+    <!-- Source Toggle -->
+    <div class="source-toggle" id="source-toggle" style="display:none">
+      <button class="src-btn active" id="btn-src-req" onclick="App.switchSource('req')">
+        📋 Requisições<span class="src-count" id="src-count-req">0</span>
+      </button>
+      <button class="src-btn" id="btn-src-inc" onclick="App.switchSource('inc')">
+        ⚡ Incidentes<span class="src-count" id="src-count-inc">0</span>
+      </button>
+    </div>
+    <div class="hdr-actions">
+      <button class="btn btn-ghost" id="btn-reset" title="Limpar todos os filtros">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.38"/></svg>
+        Limpar Filtros
+      </button>
+      <button class="btn btn-success" id="btn-export">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Exportar XLSX
+      </button>
+      <button class="btn-icon" id="theme-toggle" aria-label="Alternar tema">
+        <svg id="ico-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="ico-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- FILTERS BAR -->
+  <div class="filters-bar hidden" id="filters-bar">
+    <span class="filters-lbl">Filtros</span>
+    <div class="filter-group"><label>De</label><input type="date" class="filter-date" id="f-start" aria-label="Data início"></div>
+    <div class="filter-group"><label>Até</label><input type="date" class="filter-date" id="f-end" aria-label="Data fim"></div>
+    <select id="f-analista" aria-label="Analista"><option value="">Todos os Analistas</option></select>
+    <select id="f-atendimento" aria-label="Atendimento"><option value="">Todos os Atendimentos</option></select>
+    <select id="f-software" aria-label="Software"><option value="">Todos os Softwares</option></select>
+    <select id="f-ccusto" aria-label="Centro de Custo"><option value="">Todos os C. Custos</option></select>
+    <select id="f-diretoria" aria-label="Diretoria"><option value="">Todas as Diretorias</option></select>
+    <select id="f-status" aria-label="Status"><option value="">Todos os Status</option></select>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div class="content-area hidden" id="main-content">
+
+    <!-- ===== TAB: DASHBOARD ===== -->
+    <div id="tab-dashboard">
+      <div class="kpi-grid">
+        <!-- 1. Total -->
+        <div class="kpi-card clickable" onclick="App.drillDown('all','')">
+          <div class="kpi-icon i-blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand-400)" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div class="kpi-lbl">Total de Chamados</div>
+          <div class="kpi-val c-blue" id="kpi-total">0</div>
+          <div class="kpi-sub">Volume total processado</div>
+        </div>
+        <!-- 2. Encerrados -->
+        <div class="kpi-card clickable" onclick="App.drillDown('status','Encerrado')">
+          <div class="kpi-icon i-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="kpi-lbl">Encerrados</div>
+          <div class="kpi-val c-green" id="kpi-enc">0</div>
+          <div class="kpi-sub" id="kpi-enc-pct">0% concluído</div>
+        </div>
+        <!-- 3. Abertos -->
+        <div class="kpi-card clickable" onclick="App.drillDown('status','Aberto')">
+          <div class="kpi-icon i-purple"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="kpi-lbl">Abertos</div>
+          <div class="kpi-val c-purple" id="kpi-abertos">0</div>
+          <div class="kpi-sub" id="kpi-abertos-pct">0% em aberto</div>
+        </div>
+        <!-- 4. Dentro do SLA -->
+        <div class="kpi-card clickable" onclick="App.drillDown('sla-in','')">
+          <div class="kpi-icon i-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="kpi-lbl">Dentro do SLA</div>
+          <div class="kpi-val c-green" id="kpi-sla-in">0</div>
+          <div class="kpi-sub" id="kpi-sla-in-pct">≤ 2 dias</div>
+        </div>
+        <!-- 5. Fora do SLA -->
+        <div class="kpi-card clickable" onclick="App.drillDown('sla-out','')">
+          <div class="kpi-icon i-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div class="kpi-lbl">Fora do SLA (&gt;2 dias)</div>
+          <div class="kpi-val c-orange" id="kpi-sla-out">0</div>
+          <div class="kpi-sub" id="kpi-sla-out-pct">Atenção crítica</div>
+        </div>
+        <!-- 6. Tempo Médio -->
+        <div class="kpi-card">
+          <div class="kpi-icon i-gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neutral)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="kpi-lbl">Tempo Médio (dias)</div>
+          <div class="kpi-val c-gray" id="kpi-avg">—</div>
+          <div class="kpi-sub" id="kpi-avg-sub">Encerrados com data</div>
+        </div>
+      </div>
+
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">Distribuição por Status</div><div class="card-sub">Encerrado vs. Aberto</div></div>
+          </div>
+          <div class="chart-wrap h-200"><canvas id="chart-status"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">Top 10 Softwares</div><div class="card-sub">Volume de chamados por software</div></div>
+          </div>
+          <div class="chart-wrap h-200"><canvas id="chart-software"></canvas></div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">Distribuição de SLA</div><div class="card-sub">Dentro vs. Fora do SLA (2 dias)</div></div>
+          </div>
+          <div class="chart-wrap h-200"><canvas id="chart-sla-dash"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">Chamados por Responsável</div><div class="card-sub">Top 10 — clique para filtrar</div></div>
+          </div>
+          <div class="chart-wrap h-200"><canvas id="chart-responsavel-dash"></canvas></div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title" style="color:var(--danger)">⚠ Gargalos SLA Crítico</div><div class="card-sub">Analistas com maior retenção acima de 48h</div></div>
+          </div>
+          <div id="bn-list" class="bn-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">Chamados por Mês</div><div class="card-sub">Volume mensal — clique para filtrar</div></div>
+          </div>
+          <div class="chart-wrap h-200"><canvas id="chart-monthly"></canvas></div>
+        </div>
+      </div>
+    </div><!-- /tab-dashboard -->
+
+    <!-- ===== TAB: ANALISTAS ===== -->
+    <div id="tab-analistas" class="hidden">
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Chamados por Analista</div><div class="card-sub">Volume total — clique para filtrar</div></div></div>
+          <div class="chart-wrap h-300"><canvas id="chart-analistas"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Tempo Médio por Analista (horas)</div><div class="card-sub">MTTR — Mean Time To Resolve</div></div></div>
+          <div class="chart-wrap h-300"><canvas id="chart-analistas-mttr"></canvas></div>
+        </div>
+      </div>
+      <div class="bi-full card">
+        <div class="card-hdr"><div><div class="card-title">Ranking de Analistas</div><div class="card-sub">Performance completa — clique em uma linha para filtrar</div></div></div>
+        <div class="tbl-wrap" style="max-height:360px">
+          <table class="analyst-table">
+            <thead><tr>
+              <th>#</th><th>Analista</th><th>Total</th><th>Encerrados</th>
+              <th>Fora SLA</th><th>MTTR Médio</th><th>Compliance</th>
+            </tr></thead>
+            <tbody id="analyst-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /tab-analistas -->
+
+    <!-- ===== TAB: ÁREAS ===== -->
+    <div id="tab-areas" class="hidden">
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Chamados por Diretoria</div><div class="card-sub">Volume total — clique para filtrar</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-diretoria"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Chamados por Centro de Custo</div><div class="card-sub">Top 12 centros de custo</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-ccusto"></canvas></div>
+        </div>
+      </div>
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Top Software por Diretoria</div><div class="card-sub">Software mais acionado por área</div></div></div>
+          <div id="dir-software-rank" class="rank-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Fora do SLA por Diretoria</div><div class="card-sub">Diretorias com mais chamados críticos</div></div></div>
+          <div id="dir-sla-rank" class="rank-list"></div>
+        </div>
+      </div>
+    </div><!-- /tab-areas -->
+
+    <!-- ===== TAB: SLA ===== -->
+    <div id="tab-sla" class="hidden">
+      <div class="sla-metrics">
+        <div class="sla-metric"><div class="sm-val c-green" id="sla-compliance">—</div><div class="sm-lbl">% Compliance SLA</div></div>
+        <div class="sla-metric"><div class="sm-val c-orange" id="sla-out-count">—</div><div class="sm-lbl">Fora do SLA</div></div>
+        <div class="sla-metric"><div class="sm-val c-blue" id="sla-avg-days">—</div><div class="sm-lbl">Tempo Médio (dias)</div></div>
+        <div class="sla-metric"><div class="sm-val c-red" id="sla-max-days">—</div><div class="sm-lbl">Maior Tempo (dias)</div></div>
+        <div class="sla-metric"><div class="sm-val c-gray" id="sla-with-date">—</div><div class="sm-lbl">Com Encerramento</div></div>
+      </div>
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">SLA — Dentro vs. Fora</div></div></div>
+          <div class="chart-wrap h-200"><canvas id="chart-sla-donut"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Evolução SLA por Mês (%)</div><div class="card-sub">% de chamados dentro do SLA</div></div></div>
+          <div class="chart-wrap h-200"><canvas id="chart-sla-monthly"></canvas></div>
+        </div>
+      </div>
+      <div class="bi-full card">
+        <div class="card-hdr">
+          <div><div class="card-title" style="color:var(--orange)">Chamados Fora do SLA (>48h)</div><div class="card-sub" id="sla-table-count"></div></div>
+        </div>
+        <div class="tbl-wrap" style="max-height:380px">
+          <table>
+            <thead><tr>
+              <th data-sort="id">Protocolo</th><th data-sort="abertura">Abertura</th>
+              <th>Analista</th><th>Diretoria</th><th>Software</th>
+              <th data-sort="mttr">Tempo (h)</th><th>Observações</th>
+            </tr></thead>
+            <tbody id="sla-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /tab-sla -->
+
+    <!-- ===== TAB: TENDÊNCIAS ===== -->
+    <div id="tab-trends" class="hidden">
+      <div class="bi-full card">
+        <div class="card-hdr"><div><div class="card-title">Chamados por Dia (últimos 90 dias)</div><div class="card-sub">Volume diário de abertura</div></div></div>
+        <div class="chart-wrap h-300"><canvas id="chart-daily"></canvas></div>
+      </div>
+      <div class="bi-row" style="margin-top:1rem">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Volume Mensal por Status</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-monthly-stacked"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">% SLA por Mês</div><div class="card-sub">Aderência ao SLA mensal</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-sla-trend"></canvas></div>
+        </div>
+      </div>
+    </div><!-- /tab-trends -->
+
+    <!-- ===== TAB: OBSERVAÇÕES ===== -->
+    <div id="tab-observations" class="hidden">
+      <div class="bi-row">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Categorias de Observações</div><div class="card-sub">Análise automática por palavras-chave</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-obs"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Tabela de Motivos</div><div class="card-sub">Frequência por categoria identificada</div></div></div>
+          <div class="tbl-wrap" style="max-height:340px">
+            <table class="obs-table">
+              <thead><tr><th>Categoria</th><th>Qtd</th><th>%</th><th style="width:35%">Distribuição</th></tr></thead>
+              <tbody id="obs-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-observations -->
+
+    <!-- ===== TAB: INDICADORES ===== -->
+    <div id="tab-indicadores" class="hidden">
+
+      <!-- 1. Chamados Abertos por Mês -->
+      <div class="bi-full card" style="margin-bottom:1rem">
+        <div class="card-hdr">
+          <div>
+            <div class="card-title">Chamados Abertos por Mês</div>
+            <div class="card-sub">Evolução da demanda — volume mensal de abertura</div>
+          </div>
+        </div>
+        <div class="chart-wrap h-300"><canvas id="chart-opened-monthly"></canvas></div>
+      </div>
+
+      <!-- 2. Chamados Encerrados por Mês -->
+      <div class="bi-full card" style="margin-bottom:1rem">
+        <div class="card-hdr">
+          <div>
+            <div class="card-title">Chamados Encerrados por Mês</div>
+            <div class="card-sub">Produtividade e resolução — volume mensal de encerramento</div>
+          </div>
+        </div>
+        <div class="chart-wrap h-300"><canvas id="chart-closed-monthly"></canvas></div>
+      </div>
+
+      <!-- 3. Distribuição por Tempo de SLA -->
+      <div class="bi-full card" style="margin-bottom:1rem">
+        <div class="card-hdr">
+          <div>
+            <div class="card-title">Distribuição de Chamados por Tempo de SLA</div>
+            <div class="card-sub">Chamados agrupados por faixa de tempo de resolução</div>
+          </div>
+        </div>
+        <div class="chart-wrap h-260"><canvas id="chart-sla-dist"></canvas></div>
+      </div>
+
+      <div class="bi-row">
+        <!-- 4. Top 10 Softwares com filtro por mês -->
+        <div class="card">
+          <div class="card-hdr" style="flex-wrap:wrap;gap:.5rem">
+            <div>
+              <div class="card-title">Top 10 Softwares Mais Solicitados</div>
+              <div class="card-sub">Ranking por período — clique para filtrar</div>
+            </div>
+            <select id="ind-filter-month-sw" aria-label="Filtrar software por mês" style="font-size:.72rem;padding:.32rem .65rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-primary);font-family:inherit;font-weight:600">
+              <option value="">Todos os meses</option>
+            </select>
+          </div>
+          <div class="chart-wrap h-300"><canvas id="chart-top-sw"></canvas></div>
+        </div>
+
+        <!-- 5. Status com filtro por mês -->
+        <div class="card">
+          <div class="card-hdr" style="flex-wrap:wrap;gap:.5rem">
+            <div>
+              <div class="card-title">Status dos Chamados</div>
+              <div class="card-sub">Encerrado vs. Aberto com filtro mensal</div>
+            </div>
+            <select id="ind-filter-month-status" aria-label="Filtrar status por mês" style="font-size:.72rem;padding:.32rem .65rem;border-radius:6px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text-primary);font-family:inherit;font-weight:600">
+              <option value="">Todos os meses</option>
+            </select>
+          </div>
+          <div class="chart-wrap h-300"><canvas id="chart-status-month"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 6. Chamados por Diretoria -->
+      <div class="bi-row" style="margin-top:0">
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Chamados por Diretoria</div><div class="card-sub">Volume total por área solicitante</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-ind-diretoria"></canvas></div>
+        </div>
+        <!-- 7. Ranking Analistas BI -->
+        <div class="card">
+          <div class="card-hdr"><div><div class="card-title">Ranking de Analistas</div><div class="card-sub">Quem atendeu mais chamados</div></div></div>
+          <div class="chart-wrap h-280"><canvas id="chart-ind-analistas"></canvas></div>
+        </div>
+      </div>
+
+    </div><!-- /tab-indicadores -->
+
+    <!-- ===== TAB: EXPLORADOR ===== -->
+    <div id="tab-explorer" class="hidden">
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="App.switchExplorerTab('all',this)">Todos</button>
+        <button class="sub-tab" onclick="App.switchExplorerTab('Encerrado',this)">🟢 Encerrados</button>
+        <button class="sub-tab" onclick="App.switchExplorerTab('Aberto',this)">🟣 Abertos</button>
+        <button class="sub-tab" onclick="App.switchExplorerTab('sla',this)">🔴 Fora do SLA</button>
+      </div>
+      <div class="explorer-top">
+        <div class="search-wrap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="tbl-search" placeholder="Buscar por protocolo, software, analista, diretoria...">
+        </div>
+        <span id="tbl-count" style="font-size:.72rem;color:var(--text-muted);font-family:'DM Mono',monospace"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th data-sort="id">Protocolo</th>
+              <th data-sort="abertura">Abertura</th>
+              <th data-sort="encerramento">Encerramento</th>
+              <th data-sort="software">Software</th>
+              <th>CC / Diretoria</th>
+              <th data-sort="status">Status</th>
+              <th data-sort="analista">Analista</th>
+              <th data-sort="mttr">Tempo (h)</th>
+              <th>SLA</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+        <div class="pager" id="pager"></div>
+      </div>
+    </div><!-- /tab-explorer -->
+
+  </div><!-- /main-content -->
+
+  <!-- UPLOAD -->
+  <div id="upload-screen" class="upload-area">
+    <div class="upload-card" id="dropzone">
+      <div class="upload-icon-wrap">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h2>DASHBOARD DE CHAMADOS TI</h2>
+      <p>Arraste sua planilha Excel aqui ou clique no botão abaixo.<br>O arquivo deve conter as guias <strong>Requisição</strong> e <strong>Incidente</strong>.</p>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()" style="width:100%;justify-content:center;padding:.8rem;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Carregar Planilha Excel
+      </button>
+      <input type="file" id="fileInput" class="hidden" accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv">
+      <p class="upload-fmt">.xlsx · .xls · .xlsm · .csv · .ods</p>
+    </div>
+  </div>
+</main>
+
+<!-- LOADER -->
+<div id="loader"><div class="spinner"></div><p class="loader-txt">Processando dados...</p></div>
+
+<!-- TOAST -->
+<div id="toast-cont"></div>
+
+<!-- ===================================================================
+     JAVASCRIPT
+=================================================================== -->
+<script>
+'use strict';
+
+/* ─── Chart.js Global Defaults ──────────────────────────── */
+Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 14;
+Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+Chart.defaults.plugins.tooltip.titleColor = '#e2e8f0';
+Chart.defaults.plugins.tooltip.bodyColor = '#94a3b8';
+Chart.defaults.plugins.tooltip.padding = 12;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.displayColors = false;
+
+const App = (() => {
+/* ─── Constants ──────────────────────────────────────────── */
+const SLA_H      = 48;   // 2 days in hours
+const PAGE_SIZE  = 50;
+const FILTER_IDS = ['f-start','f-end','f-analista','f-atendimento','f-software','f-ccusto','f-diretoria','f-status'];
+const TAB_TITLES = {
+  dashboard:'Dashboard',analistas:'Analistas',areas:'Áreas',
+  sla:'Análise de SLA',trends:'Tendências',observations:'Observações',
+  explorer:'Explorador',indicadores:'Indicadores'
+};
+function tabTitle(tab) {
+  const base = TAB_TITLES[tab] || 'BI TI';
+  const src  = State.activeSource === 'req' ? 'Requisições' : 'Incidentes';
+  return `${base} — ${src}`;
+}
+const STATUS_COLORS = {
+  'Encerrado':'#059669',
+  'Aberto':'#7c3aed'
+};
+const PALETTE = ['#004a94','#059669','#d97706','#dc2626','#7c3aed','#4f46e5','#ea580c','#0891b2','#65a30d','#d946ef','#0f766e','#9f1239'];
+const OBS_CATS = [
+  {label:'Problema de Acesso',   regex:/acesso|login|senha|autenti|bloqueio/i},
+  {label:'Solicitação de Licença',regex:/licen[çc]/i},
+  {label:'Erro de Sistema',      regex:/erro|falha|bug|crash|travad/i},
+  {label:'Instalação de Software',regex:/instala/i},
+  {label:'Atualização de Sistema',regex:/atualiza/i},
+  {label:'Configuração',         regex:/configur|setup/i},
+  {label:'Problema de Rede',     regex:/rede|internet|vpn|wi.?fi|conectiv|lentid/i},
+  {label:'Impressora/Periférico',regex:/impressor|periférico|scanner|mouse|teclado/i},
+  {label:'E-mail/Comunicação',   regex:/e.?mail|outlook|teams|skype/i},
+  {label:'Cancelado',            regex:/cancelad/i},
+  {label:'Suspenso',             regex:/suspens/i},
+  {label:'Encaminhado',          regex:/encaminh/i},
+];
+
+/* ─── State ──────────────────────────────────────────────── */
+const State = {
+  reqData:[],incData:[],                  // per-sheet parsed data
+  rawData:[],filteredData:[],tableData:[], // active working sets
+  activeSource:'req',                      // 'req' | 'inc'
+  charts:{},currentPage:1,sortKey:null,sortAsc:true,
+  explorerTab:'all',activeTab:'dashboard',
+};
+
+/* ─── DOM ─────────────────────────────────────────────────── */
+const DOM = {};
+const $  = id => document.getElementById(id);
+const $$ = s  => document.querySelectorAll(s);
+
+/* ─── Chart Registry ─────────────────────────────────────── */
+function mkChart(id, cfg) {
+  if (State.charts[id]) { State.charts[id].destroy(); delete State.charts[id]; }
+  const el = $(id);
+  if (!el) return null;
+  State.charts[id] = new Chart(el, cfg);
+  return State.charts[id];
+}
+function chartTheme() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  return {
+    text:   dark ? '#8b949e' : '#475569',
+    grid:   dark ? '#30363d' : '#e8ecf1',
+    tick:   dark ? '#6e7681' : '#94a3b8',
+  };
+}
+function baseScales(horizontal = false) {
+  const t = chartTheme();
+  const axis = {
+    ticks:{ color:t.tick, font:{size:11} },
+    grid:{ color:t.grid, drawBorder:false },
+    border:{ display:false }
+  };
+  return horizontal
+    ? { x:{ ...axis, beginAtZero:true }, y:{ ...axis, grid:{display:false,drawBorder:false}, border:{display:false} } }
+    : { x:{ ...axis, grid:{display:false,drawBorder:false}, border:{display:false} }, y:{ ...axis, beginAtZero:true } };
+}
+
+/* ─── Init ────────────────────────────────────────────────── */
+function init() {
+  DOM.sidebar     = $('sidebar');
+  DOM.collapseBtn = $('collapse-btn');
+  DOM.loader      = $('loader');
+  DOM.uploadSc    = $('upload-screen');
+  DOM.mainContent = $('main-content');
+  DOM.filtersBar  = $('filters-bar');
+  DOM.fileInput   = $('fileInput');
+  DOM.dropzone    = $('dropzone');
+  DOM.tblBody     = $('tbl-body');
+  DOM.pager       = $('pager');
+  DOM.tblSearch   = $('tbl-search');
+  DOM.filterBadge = $('filter-badge');
+
+  $('current-date').textContent = new Date().toLocaleDateString('pt-BR');
+
+  // File upload
+  DOM.fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  DOM.dropzone.addEventListener('dragover',  e => { e.preventDefault(); DOM.dropzone.classList.add('drag-over'); });
+  DOM.dropzone.addEventListener('dragleave', () => DOM.dropzone.classList.remove('drag-over'));
+  DOM.dropzone.addEventListener('drop', e => {
+    e.preventDefault(); DOM.dropzone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files);
+  });
+
+  // Sidebar collapse
+  DOM.collapseBtn.addEventListener('click', () => {
+    DOM.sidebar.classList.toggle('collapsed');
+    const c = DOM.sidebar.classList.contains('collapsed');
+    DOM.collapseBtn.querySelector('svg polyline').setAttribute('points', c ? '9 18 15 12 9 6' : '15 18 9 12 15 6');
+  });
+
+  // Nav
+  $$('.nav-item').forEach(item => {
+    item.addEventListener('click', () => switchTab(item.dataset.tab, item));
+    item.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); switchTab(item.dataset.tab, item); }});
+  });
+
+  // Theme
+  $('theme-toggle').addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+    $('ico-sun').classList.toggle('hidden', !dark);
+    $('ico-moon').classList.toggle('hidden', dark);
+    // Re-render charts with new colors
+    if (State.rawData.length) renderChartsForTab(State.activeTab);
+  });
+
+  // Buttons
+  $('btn-reset').addEventListener('click', resetFilters);
+  $('btn-export').addEventListener('click', exportXLSX);
+
+  // Table search
+  DOM.tblSearch.addEventListener('input', debounce(() => { State.currentPage=1; renderTable(); }, 250));
+
+  // Table sort
+  $$('#main-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (State.sortKey === k) State.sortAsc = !State.sortAsc;
+      else { State.sortKey = k; State.sortAsc = true; }
+      $$('#main-table th').forEach(t => t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      State.currentPage = 1;
+      renderTable();
+    });
+  });
+}
+
+/* ─── Utilities ───────────────────────────────────────────── */
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+function parseDate(val) {
+  if (!val || val === '') return null;
+  if (val instanceof Date) return isNaN(val) ? null : val;
+  if (typeof val === 'number') {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return isNaN(d) ? null : d;
+  }
+  const s = String(val).trim();
+  const brs = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})(.*)$/);
+  if (brs) {
+    const [,dd,mm,yy,rest] = brs;
+    const yr = yy.length===2 ? '20'+yy : yy;
+    const base = new Date(`${yr}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`);
+    if (!isNaN(base)) {
+      const tMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (tMatch) { base.setHours(+tMatch[1],+tMatch[2],+(tMatch[3]||0)); }
+      return base;
+    }
+  }
+  const d2 = new Date(s);
+  return isNaN(d2) ? null : d2;
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
+  const delim = lines[0].includes(';') ? ';' : ',';
+  const clean  = s => s.trim().replace(/^["']|["']$/g, '');
+  const headers = lines[0].split(delim).map(clean);
+  return lines.slice(1).map(line => {
+    const vals = line.split(delim).map(clean);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i] || '');
+    return obj;
+  });
+}
+
+function toast(msg, type='info', dur=3500) {
+  const c  = $('toast-cont');
+  const t  = document.createElement('div');
+  const icon = {success:'✓',error:'✕',info:'ℹ'};
+  t.className = `toast toast-${type}`;
+  t.textContent = (icon[type]||'') + ' ' + msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation='toastOut .3s ease forwards'; setTimeout(() => t.remove(), 300); }, dur);
+}
+
+function showModal(title, stats) {
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.onclick = e => { if (e.target===ov) ov.remove(); };
+  ov.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-hdr">
+        <h3>${title}</h3>
+        <button class="modal-close" aria-label="Fechar">✕</button>
+      </div>
+      ${stats.map(([l,v]) => `<div class="modal-stat"><span class="modal-stat-lbl">${l}</span><span class="modal-stat-val">${v}</span></div>`).join('')}
+    </div>`;
+  ov.querySelector('.modal-close').onclick = () => ov.remove();
+  document.body.appendChild(ov);
+}
+
+function animateCount(el, target, suffix='') {
+  if (!el) return;
+  const num = parseFloat(target);
+  if (isNaN(num)) { el.textContent = target + suffix; return; }
+  const start = parseFloat(el.textContent) || 0;
+  const dur = 600, step = 16;
+  let elapsed = 0;
+  const frame = () => {
+    elapsed += step;
+    const prog = Math.min(elapsed / dur, 1);
+    const ease = 1 - Math.pow(1 - prog, 3);
+    const cur = start + (num - start) * ease;
+    el.textContent = (Number.isInteger(num) ? Math.round(cur) : cur.toFixed(1)) + suffix;
+    if (prog < 1) setTimeout(frame, step);
+  };
+  frame();
+}
+
+function setText(id, val) { const e=$(id); if(e) e.textContent=val; }
+
+function groupCount(arr, key) {
+  const m = {};
+  for (const r of arr) { const k = r[key] || '(vazio)'; m[k] = (m[k]||0) + 1; }
+  return Object.entries(m).sort((a,b) => b[1]-a[1]);
+}
+
+function groupBy(arr, key) {
+  return arr.reduce((acc, r) => {
+    const k = r[key] || '(vazio)';
+    if (!acc[k]) acc[k] = [];
+    acc[k].push(r);
+    return acc;
+  }, {});
+}
+
+function fmtDate(d) { return d ? d.toLocaleDateString('pt-BR') : '—'; }
+function fmtH(h)    { return h !== null && h !== undefined ? h.toFixed(1)+'h' : '—'; }
+function fmtDays(h) { return h !== null && h !== undefined ? (h/24).toFixed(1)+' dias' : '—'; }
+
+function classifyObs(obs) {
+  if (!obs) return 'Sem Observação';
+  for (const c of OBS_CATS) { if (c.regex.test(obs)) return c.label; }
+  return 'Outros';
+}
+
+/* ─── File Handling ──────────────────────────────────────── */
+function handleFiles(files) {
+  if (!files?.length) return;
+  if (typeof XLSX === 'undefined') { toast('Erro: SheetJS não carregado.','error'); return; }
+  DOM.loader.style.display = 'flex';
+  const file = files[0];
+  const isXls = /\.(xlsx|xls|xlsm|xlsb|ods)$/i.test(file.name);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      if (!isXls) {
+        // CSV fallback — treat as single dataset (req)
+        const json = parseCSV(e.target.result);
+        if (!json?.length) throw new Error('Nenhum dado encontrado.');
+        State.reqData = parseSheet(json);
+        State.incData = [];
+        loadActiveSource();
+        toast(`${json.length.toLocaleString('pt-BR')} registros carregados (CSV).`, 'success');
+        return;
+      }
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true });
+      if (!wb.SheetNames.length) throw new Error('Arquivo vazio.');
+
+      // Find sheets by name (flexible matching)
+      const sheetNames = wb.SheetNames;
+      const reqName = sheetNames.find(n => /requis/i.test(n)) || sheetNames[0];
+      const incName = sheetNames.find(n => /incid/i.test(n) && n !== reqName);
+
+      const toJson = name => name
+        ? XLSX.utils.sheet_to_json(wb.Sheets[name], { defval:'' })
+        : [];
+
+      const reqJson = toJson(reqName);
+      const incJson = incName ? toJson(incName) : [];
+
+      State.reqData = parseSheet(reqJson);
+      State.incData = parseSheet(incJson);
+
+      // Update count badges & show toggle only if both sheets exist
+      setText('src-count-req', State.reqData.length.toLocaleString('pt-BR'));
+      setText('src-count-inc', State.incData.length.toLocaleString('pt-BR'));
+      const toggle = $('source-toggle');
+      if (toggle) toggle.style.display = State.incData.length ? 'flex' : 'none';
+
+      loadActiveSource();
+
+      const total = State.reqData.length + State.incData.length;
+      const msg = incName
+        ? `${total.toLocaleString('pt-BR')} registros carregados — Requisições: ${State.reqData.length.toLocaleString('pt-BR')} | Incidentes: ${State.incData.length.toLocaleString('pt-BR')}`
+        : `${State.reqData.length.toLocaleString('pt-BR')} registros carregados (guia "${reqName}" — guia Incidente não encontrada).`;
+      toast(msg, 'success');
+    } catch(err) {
+      console.error(err);
+      toast('Erro ao processar arquivo: ' + err.message, 'error', 5000);
+      DOM.loader.style.display = 'none';
+    }
+  };
+  reader.onerror = () => { toast('Falha na leitura do arquivo.','error'); DOM.loader.style.display='none'; };
+  isXls ? reader.readAsArrayBuffer(file) : reader.readAsText(file, 'utf-8');
+}
+
+/* Switch active data source */
+function switchSource(src) {
+  State.activeSource = src;
+  // Update toggle buttons
+  $$('.src-btn').forEach(b => b.classList.toggle('active', b.id === `btn-src-${src}`));
+  loadActiveSource();
+  const label = src === 'req' ? 'Requisições' : 'Incidentes';
+  toast(`Fonte alterada: ${label}`, 'info', 1500);
+}
+
+function loadActiveSource() {
+  State.rawData = State.activeSource === 'req' ? State.reqData : State.incData;
+  DOM.uploadSc.classList.add('hidden');
+  DOM.mainContent.classList.remove('hidden');
+  DOM.filtersBar.classList.remove('hidden');
+  DOM.loader.style.display = 'none';
+  populateFilters();
+  refresh();
+}
+
+/* ─── Data Processing ────────────────────────────────────── */
+/**
+ * parseSheet — converts raw Excel JSON rows into normalised record objects.
+ * Status rule: ONLY based on Encerramento date.
+ *   Encerramento preenchido → "Encerrado"
+ *   Encerramento vazio     → "Aberto"
+ */
+function parseSheet(json) {
+  if (!json?.length) return [];
+
+  const getF = (row, key) => {
+    const lk = key.toLowerCase().trim();
+    const found = Object.keys(row).find(k => k.trim().toLowerCase() === lk);
+    return found && row[found] !== undefined ? String(row[found]).trim() : '';
+  };
+
+  return json
+    .filter(row => {
+      // Skip completely empty rows
+      const vals = Object.values(row);
+      return vals.some(v => String(v).trim() !== '');
+    })
+    .map((row, idx) => {
+      const obs       = getF(row,'Observações') || getF(row,'Observacao') || getF(row,'Obs');
+      const atend     = getF(row,'Atendimento');   // raw column — kept for filtering, NOT for status
+      const abertura  = parseDate(getF(row,'Abertura do Chamado') || getF(row,'Abertura'));
+      const encerr    = parseDate(getF(row,'Encerramento Chamado') || getF(row,'Encerramento'));
+      const software  = getF(row,'Software') || 'Outros';
+      const analista  = getF(row,'Quem Atendeu') || getF(row,'Analista') || 'Pendente';
+      const ccusto    = getF(row,'Centro de Custo') || getF(row,'C. Custo') || getF(row,'CC') || 'N/I';
+      const diretoria = getF(row,'Diretoria') || getF(row,'Unidade') || 'N/I';
+      const classif   = getF(row,'Classificação') || getF(row,'Classificacao') || '';
+
+      // ── STATUS RULE: depends ONLY on Encerramento date ──────────
+      const status = encerr ? 'Encerrado' : 'Aberto';
+
+      const month  = abertura
+        ? `${abertura.getFullYear()}-${String(abertura.getMonth()+1).padStart(2,'0')}`
+        : 'S/D';
+      const dayStr = abertura ? abertura.toISOString().slice(0,10) : null;
+
+      // ── SLA CALCULATION (2 days = 48 hours) ─────────────────────
+      // For Encerrados → use real encerramento date
+      // For Abertos    → use today to flag tickets already past SLA
+      let mttr=null, slaOk=null, isCrit=false;
+      if (abertura) {
+        const endDate = encerr || new Date();
+        const hours   = (endDate - abertura) / 3600000;
+        if (hours >= 0) {
+          mttr   = hours;
+          slaOk  = hours <= SLA_H;
+          isCrit = hours > SLA_H;
+        }
+      }
+
+      return {
+        id:         getF(row,'Chamado') || getF(row,'Número') || getF(row,'Protocolo') || String(idx+1),
+        abertura, encerramento:encerr, analista, atendimento:atend, classif,
+        software, ccusto, diretoria, obs, status, month, dayStr,
+        mttr, slaOk, isCrit,
+        obsCategory: classifyObs(obs),
+      };
+    });
+}
+
+/* Legacy wrapper kept so nothing breaks if called elsewhere */
+function processData(json) {
+  State.reqData = parseSheet(json);
+  State.incData = [];
+  loadActiveSource();
+}
+
+/* ─── Filters ─────────────────────────────────────────────── */
+function populateFilters() {
+  // Dynamic dropdowns (derived from data)
+  const maps = [
+    ['f-analista',    r => r.analista],
+    ['f-atendimento', r => r.atendimento],  // raw Atendimento column
+    ['f-software',    r => r.software],
+    ['f-ccusto',      r => r.ccusto],
+    ['f-diretoria',   r => r.diretoria],
+  ];
+  maps.forEach(([id, fn]) => {
+    const el = $(id);
+    if (!el) return;
+    const placeholder = el.options[0].text;
+    const unique = [...new Set(State.rawData.map(fn))].filter(Boolean).sort();
+    el.innerHTML = `<option value="">${placeholder}</option>`;
+    unique.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; el.appendChild(o); });
+    el.onchange = () => refresh();
+  });
+
+  // Status filter — fixed binary values
+  const fStatus = $('f-status');
+  if (fStatus) {
+    const cur = fStatus.value;
+    fStatus.innerHTML = '<option value="">Todos os Status</option>' +
+      '<option value="Encerrado">Encerrado</option>' +
+      '<option value="Aberto">Aberto</option>';
+    if (cur) fStatus.value = cur;
+    fStatus.onchange = () => refresh();
+  }
+
+  FILTER_IDS.forEach(id => { const el=$(id); if(el && !el.onchange) el.onchange=()=>refresh(); });
+  ['f-start','f-end'].forEach(id => { const el=$(id); if(el) el.addEventListener('change',()=>refresh()); });
+}
+
+function gfv(id) { const e=$(id); return e ? e.value : ''; }
+
+function refresh() {
+  const start = gfv('f-start') ? new Date(gfv('f-start')) : null;
+  const end   = gfv('f-end')   ? new Date(gfv('f-end') + 'T23:59:59') : null;
+  State.filteredData = State.rawData.filter(r =>
+    (!start || (r.abertura && r.abertura >= start)) &&
+    (!end   || (r.abertura && r.abertura <= end))   &&
+    (!gfv('f-analista')    || r.analista    === gfv('f-analista'))    &&
+    (!gfv('f-atendimento') || r.atendimento === gfv('f-atendimento')) &&
+    (!gfv('f-software')    || r.software    === gfv('f-software'))    &&
+    (!gfv('f-ccusto')      || r.ccusto      === gfv('f-ccusto'))      &&
+    (!gfv('f-diretoria')   || r.diretoria   === gfv('f-diretoria'))   &&
+    (!gfv('f-status')      || r.status      === gfv('f-status'))
+  );
+  updateFilterBadge();
+  render();
+}
+
+function updateFilterBadge() {
+  let count = 0;
+  FILTER_IDS.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    const active = el.value !== '' && el.value !== undefined;
+    el.classList.toggle('active', active);
+    if (active) count++;
+  });
+  if (DOM.filterBadge) {
+    DOM.filterBadge.textContent = count + (count===1?' filtro':' filtros');
+    DOM.filterBadge.classList.toggle('visible', count > 0);
+  }
+}
+
+function resetFilters() {
+  FILTER_IDS.forEach(id => { const el=$(id); if(el) { el.value=''; el.classList.remove('active'); }});
+  if (DOM.tblSearch) DOM.tblSearch.value = '';
+  State.currentPage = 1;
+  refresh();
+  toast('Filtros limpos.','info',2000);
+}
+
+/* ─── Main Render ─────────────────────────────────────────── */
+function render() {
+  const data = State.filteredData;
+  const enc      = data.filter(r => r.status === 'Encerrado');
+  const abertos  = data.filter(r => r.status === 'Aberto');
+  const withTime = data.filter(r => r.mttr !== null);
+  const slaIn    = withTime.filter(r => r.slaOk);
+  const out      = data.filter(r => r.isCrit);
+  const avgH     = withTime.length ? withTime.reduce((s,r)=>s+r.mttr,0)/withTime.length : null;
+
+  // KPIs
+  animateCount($('kpi-total'),    data.length);
+  animateCount($('kpi-enc'),      enc.length);
+  animateCount($('kpi-abertos'),  abertos.length);
+  animateCount($('kpi-sla-in'),   slaIn.length);
+  animateCount($('kpi-sla-out'),  out.length);
+
+  setText('kpi-enc-pct',      data.length ? Math.round(enc.length/data.length*100)+'% concluído' : '0%');
+  setText('kpi-abertos-pct',  data.length ? Math.round(abertos.length/data.length*100)+'% em aberto' : '0%');
+  setText('kpi-sla-in-pct',   withTime.length ? Math.round(slaIn.length/withTime.length*100)+'% dos encerrados' : '— %');
+  setText('kpi-sla-out-pct',  withTime.length ? Math.round(out.length/withTime.length*100)+'% dos encerrados' : '— %');
+
+  if (avgH !== null) {
+    animateCount($('kpi-avg'), (avgH/24).toFixed(1));
+  } else {
+    setText('kpi-avg','—');
+  }
+  setText('data-count', `${data.length.toLocaleString('pt-BR')} registros filtrados`);
+
+  // Render active tab's charts
+  renderChartsForTab(State.activeTab);
+
+  // Table
+  State.currentPage = 1;
+  renderTable();
+}
+
+function renderChartsForTab(tab) {
+  const data = State.filteredData;
+  if (tab === 'dashboard') {
+    renderDashboard(data);
+  } else if (tab === 'analistas') {
+    renderAnalistas(data);
+  } else if (tab === 'areas') {
+    renderAreas(data);
+  } else if (tab === 'sla') {
+    renderSLA(data);
+  } else if (tab === 'trends') {
+    renderTrends(data);
+  } else if (tab === 'observations') {
+    renderObservations(data);
+  } else if (tab === 'indicadores') {
+    renderIndicadores(data);
+  }
+}
+
+/* ─── Dashboard Charts ────────────────────────────────────── */
+function renderDashboard(data) {
+  const t = chartTheme();
+
+  // Status doughnut — binary: Encerrado / Aberto
+  const statusGroups = groupCount(data, 'status');
+  mkChart('chart-status', {
+    type:'doughnut',
+    data:{
+      labels: statusGroups.map(([l])=>l),
+      datasets:[{
+        data:  statusGroups.map(([,v])=>v),
+        backgroundColor: statusGroups.map(([l])=>STATUS_COLORS[l]||'#64748b'),
+        borderWidth:0, hoverOffset:8
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{
+        legend:{ display:true, position:'right', labels:{ color:t.text, font:{size:11}, padding:10 }},
+        tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.formattedValue} (${data.length?((ctx.raw/data.length)*100).toFixed(1):0}%)` }}
+      }
+    }
+  });
+
+  // Top 10 software horizontal bar
+  const swGroups = groupCount(data,'software').slice(0,10);
+  mkChart('chart-software', {
+    type:'bar',
+    data:{
+      labels: swGroups.map(([l])=>l),
+      datasets:[{ data:swGroups.map(([,v])=>v), backgroundColor:PALETTE, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('software', swGroups[els[0].index][0]); }
+    }
+  });
+
+  // Monthly volume bar
+  const months = [...new Set(State.rawData.map(r=>r.month))].filter(Boolean).sort();
+  const mLabels = months.map(m => { const [y,mo]=m.split('-'); return `${mo}/${y.slice(2)}`; });
+  mkChart('chart-monthly', {
+    type:'bar',
+    data:{
+      labels: mLabels,
+      datasets:[{
+        label:'Chamados',
+        data: months.map(m=>State.rawData.filter(r=>r.month===m).length),
+        backgroundColor:'rgba(0,74,148,.7)', borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(),
+      onClick:(e,els) => { if(els[0]) { const m=months[els[0].index]; const el=$('f-status'); /* TODO: filter by month */ } }
+    }
+  });
+
+  // Bottlenecks
+  renderBottlenecks(data.filter(r=>r.isCrit));
+
+  // SLA distribution doughnut (dashboard)
+  const withTime = data.filter(r => r.mttr !== null);
+  const slaOkSet = withTime.filter(r => r.slaOk);
+  const slaOut   = withTime.filter(r => r.isCrit);
+  mkChart('chart-sla-dash', {
+    type:'doughnut',
+    data:{
+      labels:['Dentro do SLA','Fora do SLA'],
+      datasets:[{ data:[slaOkSet.length, slaOut.length], backgroundColor:['#059669','#ea580c'], borderWidth:0, hoverOffset:8 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{
+        legend:{ display:true, position:'right', labels:{ color:t.text, font:{size:11}, padding:10 }},
+        tooltip:{ callbacks:{ label: ctx => {
+          const tot = slaOkSet.length + slaOut.length;
+          return ` ${ctx.label}: ${ctx.formattedValue} (${tot?(ctx.raw/tot*100).toFixed(1):0}%)`;
+        }}}
+      }
+    }
+  });
+
+  // Top 10 Responsável (Quem Atendeu)
+  const respGroups = groupCount(data,'analista').slice(0,10);
+  mkChart('chart-responsavel-dash', {
+    type:'bar',
+    data:{
+      labels: respGroups.map(([l])=>l),
+      datasets:[{ data:respGroups.map(([,v])=>v), backgroundColor:PALETTE, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('analista', respGroups[els[0].index][0]); }
+    }
+  });
+}
+
+function renderBottlenecks(critical) {
+  const c = $('bn-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!critical.length) {
+    c.innerHTML = '<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><p>Zero chamados críticos. Excelente desempenho!</p></div>';
+    return;
+  }
+  groupCount(critical,'analista').slice(0,6).forEach(([analista,total]) => {
+    const subset = critical.filter(r=>r.analista===analista);
+    const topSw  = groupCount(subset,'software')[0];
+    const avgT   = (subset.reduce((s,r)=>s+(r.mttr||0),0)/subset.length).toFixed(1);
+    const el = document.createElement('div');
+    el.className = 'bn-item';
+    el.onclick = () => showModal(`Gargalo: ${analista}`, [
+      ['Total críticos',analista===analista?total:0],
+      ['Software principal',topSw?topSw[0]:'N/A'],
+      ['Tempo médio',avgT+'h'],
+      ['Maior registro',Math.max(...subset.map(r=>r.mttr||0)).toFixed(1)+'h'],
+    ]);
+    el.innerHTML = `<div><strong>${analista}</strong><br><small>Foco: ${topSw?topSw[0]:'Vários'}</small></div>
+      <div style="text-align:right"><div class="bn-count">${total}</div><small>chamados >48h</small></div>`;
+    c.appendChild(el);
+  });
+}
+
+/* ─── Analistas Charts ────────────────────────────────────── */
+function renderAnalistas(data) {
+  const t = chartTheme();
+  const byAnalista = groupBy(data, 'analista');
+  const ranking = Object.entries(byAnalista)
+    .map(([name, rows]) => {
+      const enc   = rows.filter(r=>r.status==='Encerrado');
+      const out   = rows.filter(r=>r.isCrit);
+      const withT = rows.filter(r=>r.mttr!==null);
+      const avgT  = withT.length ? withT.reduce((s,r)=>s+r.mttr,0)/withT.length : null;
+      const comp  = withT.length ? ((withT.filter(r=>r.slaOk).length/withT.length)*100).toFixed(1) : null;
+      return { name, total:rows.length, enc:enc.length, out:out.length, avgT, comp };
+    })
+    .sort((a,b) => b.total-a.total);
+
+  const top = ranking.slice(0,12);
+  const colors = top.map((_,i) => PALETTE[i % PALETTE.length]);
+
+  mkChart('chart-analistas', {
+    type:'bar',
+    data:{
+      labels:top.map(r=>r.name),
+      datasets:[{ data:top.map(r=>r.total), backgroundColor:colors, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('analista', top[els[0].index].name); }
+    }
+  });
+
+  mkChart('chart-analistas-mttr', {
+    type:'bar',
+    data:{
+      labels:top.filter(r=>r.avgT!==null).map(r=>r.name),
+      datasets:[{
+        data: top.filter(r=>r.avgT!==null).map(r=>+(r.avgT/1).toFixed(1)),
+        backgroundColor: top.filter(r=>r.avgT!==null).map(r => r.avgT>SLA_H ? '#ea580c' : '#059669'),
+        borderRadius:4, borderSkipped:'left'
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${(+ctx.raw).toFixed(1)}h (${(ctx.raw/24).toFixed(1)} dias)` }}},
+      scales:{ ...baseScales(true), x:{ ...baseScales(true).x, title:{ display:true, text:'Horas', color:t.text, font:{size:10} }}},
+      onClick:(e,els) => { if(els[0]) drillDown('analista', top.filter(r=>r.avgT!==null)[els[0].index].name); }
+    }
+  });
+
+  // Analyst ranking table
+  const tbody = $('analyst-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  ranking.forEach((r,i) => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => drillDown('analista', r.name);
+    const compColor = r.comp === null ? '' : +r.comp >= 80 ? 'sla-good' : 'sla-bad';
+    tr.innerHTML = `
+      <td style="color:var(--text-muted);font-size:.68rem">${i+1}</td>
+      <td style="font-weight:700">${r.name}</td>
+      <td style="font-family:'DM Mono',monospace">${r.total}</td>
+      <td>${r.enc}</td>
+      <td style="color:var(--orange)">${r.out}</td>
+      <td style="font-family:'DM Mono',monospace">${r.avgT!==null?r.avgT.toFixed(1)+'h':'—'}</td>
+      <td>${r.comp!==null?`<span class="sla-pill ${compColor}">${r.comp}%</span>`:'—'}</td>`;
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
+/* ─── Areas Charts ────────────────────────────────────────── */
+function renderAreas(data) {
+  const dir = groupCount(data,'diretoria').slice(0,12);
+  const cc  = groupCount(data,'ccusto').slice(0,12);
+
+  mkChart('chart-diretoria', {
+    type:'bar',
+    data:{
+      labels:dir.map(([l])=>l),
+      datasets:[{ data:dir.map(([,v])=>v), backgroundColor:PALETTE, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('diretoria', dir[els[0].index][0]); }
+    }
+  });
+
+  mkChart('chart-ccusto', {
+    type:'bar',
+    data:{
+      labels:cc.map(([l])=>l),
+      datasets:[{ data:cc.map(([,v])=>v), backgroundColor:PALETTE.slice().reverse(), borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('ccusto', cc[els[0].index][0]); }
+    }
+  });
+
+  // Dir → top software rank
+  const dirByDs = groupBy(data,'diretoria');
+  renderRank('dir-software-rank', Object.entries(dirByDs).sort((a,b)=>b[1].length-a[1].length).slice(0,10).map(([dir,rows]) => {
+    const top = groupCount(rows,'software')[0];
+    return { label:dir, count:rows.length, sub:`Software: ${top?top[0]:'N/A'}`, key:'diretoria' };
+  }), data.length);
+
+  // Dir → SLA out rank
+  const critical = data.filter(r=>r.isCrit);
+  const outByDir = groupCount(critical,'diretoria').slice(0,10);
+  renderRank('dir-sla-rank', outByDir.map(([dir,cnt]) => ({
+    label:dir, count:cnt, sub:'chamados fora do SLA', key:'diretoria', danger:true
+  })), Math.max(outByDir[0]?.[1]||1,1), true);
+}
+
+function renderRank(id, items, total, isDanger=false) {
+  const c = $(id);
+  if (!c) return;
+  c.innerHTML = '';
+  if (!items.length) { c.innerHTML='<div class="empty"><p>Sem dados.</p></div>'; return; }
+  items.forEach(item => {
+    const pct = total ? (item.count/total*100).toFixed(1) : 0;
+    const el = document.createElement('div');
+    el.className = 'rank-item';
+    el.onclick = () => drillDown(item.key || 'diretoria', item.label);
+    el.innerHTML = `
+      <div class="rank-row"><span>${item.label}</span><span class="rank-cnt">${item.count} · ${pct}%</span></div>
+      ${item.sub?`<div class="rank-detail">${item.sub}</div>`:''}
+      <div class="prog-bar"><div class="prog-fill" style="width:0%;background:${isDanger?'var(--orange)':'var(--brand-500)'}"></div></div>`;
+    c.appendChild(el);
+    setTimeout(() => { const f=el.querySelector('.prog-fill'); if(f) f.style.width=pct+'%'; }, 60);
+  });
+}
+
+/* ─── SLA Tab ─────────────────────────────────────────────── */
+function renderSLA(data) {
+  const withTime = data.filter(r => r.mttr !== null);
+  const ok  = withTime.filter(r => r.slaOk);
+  const out = withTime.filter(r => r.isCrit);
+  const comp = withTime.length ? (ok.length/withTime.length*100).toFixed(1) : '—';
+  const avgD = withTime.length ? (withTime.reduce((s,r)=>s+r.mttr,0)/withTime.length/24).toFixed(1) : '—';
+  const maxD = withTime.length ? (Math.max(...withTime.map(r=>r.mttr))/24).toFixed(1) : '—';
+
+  animateCount($('sla-compliance'), comp, comp!=='—'?'%':'');
+  animateCount($('sla-out-count'), out.length);
+  setText('sla-avg-days', avgD + (avgD!=='—'?' dias':''));
+  setText('sla-max-days', maxD + (maxD!=='—'?' dias':''));
+  animateCount($('sla-with-date'), withTime.length);
+
+  const t = chartTheme();
+  mkChart('chart-sla-donut', {
+    type:'doughnut',
+    data:{
+      labels:['Dentro do SLA','Fora do SLA'],
+      datasets:[{ data:[ok.length,out.length], backgroundColor:['#059669','#ea580c'], borderWidth:0, hoverOffset:8 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{
+        legend:{ display:true, position:'bottom', labels:{ color:t.text, font:{size:11} }},
+        tooltip:{ callbacks:{ label: ctx=>` ${ctx.label}: ${ctx.formattedValue} (${((ctx.raw/(ok.length+out.length))*100).toFixed(1)}%)` }}
+      }
+    }
+  });
+
+  // SLA monthly % line
+  const months = [...new Set(State.rawData.map(r=>r.month))].filter(Boolean).sort();
+  const slaByM = months.map(m => {
+    const mc = data.filter(r=>r.month===m&&r.mttr!==null);
+    return mc.length ? (mc.filter(r=>r.slaOk).length/mc.length*100) : null;
+  });
+  mkChart('chart-sla-monthly', {
+    type:'line',
+    data:{
+      labels: months.map(m=>{ const [y,mo]=m.split('-'); return `${mo}/${y.slice(2)}`; }),
+      datasets:[{
+        label:'% SLA',
+        data: slaByM,
+        borderColor:'#059669', backgroundColor:'rgba(5,150,105,.12)',
+        fill:true, tension:.4, pointRadius:4, pointHoverRadius:6, spanGaps:true
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue?.toFixed?.(1)||ctx.formattedValue}%` }}},
+      scales:{ ...baseScales(), y:{ ...baseScales().y, max:100, ticks:{ ...baseScales().y.ticks, callback: v=>v+'%' }}}
+    }
+  });
+
+  // SLA violations table
+  const violations = data.filter(r=>r.isCrit).sort((a,b)=>(b.mttr||0)-(a.mttr||0));
+  setText('sla-table-count', `${violations.length} registros`);
+  const tbody = $('sla-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  violations.slice(0,200).forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:'DM Mono',monospace;font-size:.68rem">#${r.id}</td>
+      <td>${fmtDate(r.abertura)}</td><td>${r.analista}</td>
+      <td>${r.diretoria}</td><td>${r.software}</td>
+      <td style="color:var(--orange);font-weight:700;font-family:'DM Mono',monospace">${fmtH(r.mttr)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.obs}">${r.obs||'—'}</td>`;
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
+/* ─── Trends Charts ───────────────────────────────────────── */
+function renderTrends(data) {
+  const t = chartTheme();
+  // Daily — last 90 days from filtered data
+  const dayMap = {};
+  data.forEach(r => { if(r.dayStr) dayMap[r.dayStr] = (dayMap[r.dayStr]||0)+1; });
+  const days = Object.keys(dayMap).sort().slice(-90);
+  mkChart('chart-daily', {
+    type:'bar',
+    data:{
+      labels: days.map(d => new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})),
+      datasets:[{
+        label:'Chamados', data:days.map(d=>dayMap[d]),
+        backgroundColor:'rgba(0,74,148,.65)', borderRadius:3
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}},
+      scales:{ ...baseScales(), x:{ ...baseScales().x, ticks:{ ...baseScales().x.ticks, maxRotation:45, autoSkip:true, maxTicksLimit:20 }}}
+    }
+  });
+
+  // Monthly stacked — only Encerrado / Aberto
+  const months = [...new Set(data.map(r=>r.month))].filter(Boolean).sort();
+  const mLabels = months.map(m => { const [y,mo]=m.split('-'); return `${mo}/${y.slice(2)}`; });
+  const statuses = ['Encerrado','Aberto'];
+  const stackColors = { Encerrado:'#059669', Aberto:'#7c3aed' };
+  mkChart('chart-monthly-stacked', {
+    type:'bar',
+    data:{
+      labels:mLabels,
+      datasets: statuses.map(s => ({
+        label:s,
+        data:months.map(m=>data.filter(r=>r.month===m&&r.status===s).length),
+        backgroundColor:stackColors[s]||'#64748b', stack:'0', borderRadius:2
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, position:'bottom', labels:{ color:t.text, font:{size:10}, padding:8 }}},
+      scales:{ ...baseScales(), x:{ ...baseScales().x }, y:{ ...baseScales().y, stacked:true }}
+    }
+  });
+
+  // SLA trend line
+  const slaByM = months.map(m => {
+    const mc = data.filter(r=>r.month===m&&r.mttr!==null);
+    return mc.length ? (mc.filter(r=>r.slaOk).length/mc.length*100) : null;
+  });
+  mkChart('chart-sla-trend', {
+    type:'line',
+    data:{
+      labels:mLabels,
+      datasets:[{
+        label:'% SLA',
+        data:slaByM,
+        borderColor:'#059669', backgroundColor:'rgba(5,150,105,.1)',
+        fill:true, tension:.4, pointRadius:4, spanGaps:true
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}},
+      scales:{ ...baseScales(), y:{ ...baseScales().y, max:100, ticks:{ ...baseScales().y.ticks, callback: v=>v+'%' }}}
+    }
+  });
+}
+
+/* ─── Observations Tab ────────────────────────────────────── */
+function renderObservations(data) {
+  const catMap = {};
+  data.forEach(r => { catMap[r.obsCategory] = (catMap[r.obsCategory]||0)+1; });
+  const sorted = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const maxV = sorted[0]?.[1]||1;
+
+  mkChart('chart-obs', {
+    type:'bar',
+    data:{
+      labels:sorted.map(([l])=>l),
+      datasets:[{ data:sorted.map(([,v])=>v), backgroundColor:PALETTE, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true)
+    }
+  });
+
+  const tbody = $('obs-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  sorted.forEach(([cat,cnt]) => {
+    const pct = ((cnt/data.length)*100).toFixed(1);
+    const barW = ((cnt/maxV)*100).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:700">${cat}</td>
+      <td style="font-family:'DM Mono',monospace">${cnt}</td>
+      <td style="font-family:'DM Mono',monospace">${pct}%</td>
+      <td><div class="obs-bar-inline"><div class="obs-bar-bg"><div class="obs-bar-fill" style="width:0%"></div></div><span style="font-size:.65rem;color:var(--text-muted)">${cnt}</span></div></td>`;
+    frag.appendChild(tr);
+    setTimeout(() => { const f=tr.querySelector('.obs-bar-fill'); if(f) f.style.width=barW+'%'; }, 60);
+  });
+  tbody.appendChild(frag);
+}
+
+/* ─── Indicadores Tab ─────────────────────────────────────── */
+function renderIndicadores(data) {
+  const t = chartTheme();
+
+  // All months from raw data (for month selectors)
+  const allMonths = [...new Set(State.rawData.map(r => r.month))].filter(m => m && m !== 'S/D').sort();
+
+  // Populate a month <select> preserving current value
+  function populateMonthSelect(selId) {
+    const sel = $(selId);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todos os meses</option>';
+    allMonths.forEach(m => {
+      const [y, mo] = m.split('-');
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = `${mo}/${y.slice(2)}`;
+      sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+  }
+  populateMonthSelect('ind-filter-month-sw');
+  populateMonthSelect('ind-filter-month-status');
+
+  // ── 1. Chamados Abertos por Mês ──────────────────────────
+  const months = allMonths;
+  const mLabels = months.map(m => { const [y, mo] = m.split('-'); return `${mo}/${y.slice(2)}`; });
+  mkChart('chart-opened-monthly', {
+    type: 'bar',
+    data: {
+      labels: mLabels,
+      datasets: [{
+        label: 'Chamados Abertos',
+        data: months.map(m => data.filter(r => r.month === m).length),
+        backgroundColor: months.map((_, i) => `rgba(0,74,148,${0.55 + (i % 3) * 0.15})`),
+        borderRadius: 5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.formattedValue} chamados abertos` } }
+      },
+      scales: baseScales()
+    }
+  });
+
+  // ── 2. Chamados Encerrados por Mês ───────────────────────
+  const closedByMonth = {};
+  data.forEach(r => {
+    if (r.encerramento) {
+      const m = `${r.encerramento.getFullYear()}-${String(r.encerramento.getMonth() + 1).padStart(2, '0')}`;
+      closedByMonth[m] = (closedByMonth[m] || 0) + 1;
+    }
+  });
+  const closedMonths = Object.keys(closedByMonth).sort();
+  mkChart('chart-closed-monthly', {
+    type: 'bar',
+    data: {
+      labels: closedMonths.map(m => { const [y, mo] = m.split('-'); return `${mo}/${y.slice(2)}`; }),
+      datasets: [{
+        label: 'Chamados Encerrados',
+        data: closedMonths.map(m => closedByMonth[m]),
+        backgroundColor: closedMonths.map((_, i) => `rgba(5,150,105,${0.55 + (i % 3) * 0.15})`),
+        borderRadius: 5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.formattedValue} chamados encerrados` } }
+      },
+      scales: baseScales()
+    }
+  });
+
+  // ── 3. Distribuição por Tempo de SLA ────────────────────
+  const withTime = data.filter(r => r.mttr !== null);
+  const slaFaixas = [
+    { label: '0 a 2 dias',      min: 0,   max: 48  },
+    { label: '3 a 5 dias',      min: 49,  max: 120 },
+    { label: '6 a 8 dias',      min: 121, max: 192 },
+    { label: 'Acima de 9 dias', min: 193, max: Infinity }
+  ];
+  const slaDistData  = slaFaixas.map(f => withTime.filter(r => r.mttr >= f.min && r.mttr <= f.max).length);
+  const slaDistTotal = slaDistData.reduce((s, v) => s + v, 0);
+  const slaColors    = ['#059669', '#d97706', '#ea580c', '#dc2626'];
+  mkChart('chart-sla-dist', {
+    type: 'bar',
+    data: {
+      labels: slaFaixas.map(f => f.label),
+      datasets: [{
+        label: 'Chamados',
+        data: slaDistData,
+        backgroundColor: slaColors,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = slaDistTotal ? ((ctx.raw / slaDistTotal) * 100).toFixed(1) : 0;
+              return ` ${ctx.formattedValue} chamados (${pct}%)`;
+            }
+          }
+        }
+      },
+      scales: baseScales()
+    }
+  });
+
+  // ── 4. Top 10 Softwares com filtro por mês ──────────────
+  function renderTopSw() {
+    const selM    = $('ind-filter-month-sw')?.value || '';
+    const filtered = selM ? data.filter(r => r.month === selM) : data;
+    const swGroups = groupCount(filtered, 'software').slice(0, 10);
+    mkChart('chart-top-sw', {
+      type: 'bar',
+      data: {
+        labels: swGroups.map(([l]) => l),
+        datasets: [{
+          data: swGroups.map(([, v]) => v),
+          backgroundColor: PALETTE,
+          borderRadius: 4,
+          borderSkipped: 'left'
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.formattedValue} chamados` } }
+        },
+        scales: baseScales(true),
+        onClick: (e, els) => { if (els[0]) drillDown('software', swGroups[els[0].index][0]); }
+      }
+    });
+  }
+  renderTopSw();
+  const swSel = $('ind-filter-month-sw');
+  if (swSel) swSel.onchange = renderTopSw;
+
+  // ── 5. Status dos Chamados com filtro por mês ───────────
+  function renderStatusMonth() {
+    const selM     = $('ind-filter-month-status')?.value || '';
+    const filtered = selM ? data.filter(r => r.month === selM) : data;
+    const sGroups  = groupCount(filtered, 'status');
+    const total    = sGroups.reduce((s, [, v]) => s + v, 0);
+    mkChart('chart-status-month', {
+      type: 'doughnut',
+      data: {
+        labels: sGroups.map(([l]) => l),
+        datasets: [{
+          data: sGroups.map(([, v]) => v),
+          backgroundColor: sGroups.map(([l]) => STATUS_COLORS[l] || '#64748b'),
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: {
+          legend: {
+            display: true, position: 'bottom',
+            labels: { color: t.text, font: { size: 11 }, padding: 10 }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.formattedValue} (${((ctx.raw / total) * 100).toFixed(1)}%)`
+            }
+          }
+        }
+      }
+    });
+  }
+  renderStatusMonth();
+  const statusSel = $('ind-filter-month-status');
+  if (statusSel) statusSel.onchange = renderStatusMonth;
+
+  // ── 6. Chamados por Diretoria ────────────────────────────
+  const dirGroups = groupCount(data,'diretoria').slice(0,12);
+  mkChart('chart-ind-diretoria', {
+    type:'bar',
+    data:{
+      labels:dirGroups.map(([l])=>l),
+      datasets:[{ data:dirGroups.map(([,v])=>v), backgroundColor:PALETTE, borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('diretoria', dirGroups[els[0].index][0]); }
+    }
+  });
+
+  // ── 7. Ranking Analistas BI ──────────────────────────────
+  const analGrp = groupCount(data,'analista').slice(0,10);
+  mkChart('chart-ind-analistas', {
+    type:'bar',
+    data:{
+      labels:analGrp.map(([l])=>l),
+      datasets:[{ data:analGrp.map(([,v])=>v), backgroundColor:PALETTE.slice().reverse(), borderRadius:4, borderSkipped:'left' }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.formattedValue} chamados` }}},
+      scales:baseScales(true),
+      onClick:(e,els) => { if(els[0]) drillDown('analista', analGrp[els[0].index][0]); }
+    }
+  });
+}
+
+/* ─── Table ───────────────────────────────────────────────── */
+function renderTable() {
+  if (!DOM.tblBody) return;
+  const search = (DOM.tblSearch?.value||'').toLowerCase();
+
+  let data = [...State.filteredData];
+  // Sub-tab filter
+  if (State.explorerTab === 'sla') data = data.filter(r=>r.isCrit);
+  else if (State.explorerTab !== 'all') data = data.filter(r=>r.status===State.explorerTab);
+
+  // Text search
+  if (search) {
+    data = data.filter(r =>
+      String(r.id).toLowerCase().includes(search) ||
+      r.software.toLowerCase().includes(search)   ||
+      r.analista.toLowerCase().includes(search)   ||
+      r.ccusto.toLowerCase().includes(search)     ||
+      r.diretoria.toLowerCase().includes(search)  ||
+      r.status.toLowerCase().includes(search)     ||
+      (r.obs||'').toLowerCase().includes(search)
+    );
+  }
+
+  // Sort
+  if (State.sortKey) {
+    data.sort((a,b) => {
+      const va=a[State.sortKey], vb=b[State.sortKey];
+      if (va==null&&vb==null) return 0;
+      if (va==null) return 1; if (vb==null) return -1;
+      const res = va<vb?-1:va>vb?1:0;
+      return State.sortAsc?res:-res;
+    });
+  }
+
+  State.tableData = data;
+  const total = data.length;
+  const totalPages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  State.currentPage = Math.min(State.currentPage, totalPages);
+  const start = (State.currentPage-1)*PAGE_SIZE;
+  const page  = data.slice(start, start+PAGE_SIZE);
+
+  DOM.tblBody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  if (!page.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhum registro encontrado.</td>`;
+    frag.appendChild(tr);
+  } else {
+    page.forEach(r => {
+      const tr = document.createElement('tr');
+      const sBadge = r.status==='Encerrado' ? 's-enc' : 's-abert';
+      const slaBadge = r.isCrit
+        ? '<span class="badge s-sla-out">Fora do SLA</span>'
+        : r.slaOk === true
+          ? '<span class="badge s-sla-ok">OK</span>'
+          : `<span style="font-size:.68rem;color:var(--text-muted)">${r.status}</span>`;
+      tr.innerHTML = `
+        <td style="font-family:'DM Mono',monospace;font-size:.68rem">#${r.id}</td>
+        <td>${fmtDate(r.abertura)}</td>
+        <td>${fmtDate(r.encerramento)}</td>
+        <td style="font-weight:700">${r.software}</td>
+        <td>${r.ccusto}<br><small style="color:var(--text-muted)">${r.diretoria}</small></td>
+        <td><span class="badge ${sBadge}">${r.status}</span></td>
+        <td>${r.analista}</td>
+        <td style="font-family:'DM Mono',monospace">${fmtH(r.mttr)}</td>
+        <td>${slaBadge}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--text-secondary)" title="${r.obs||''}">${r.obs||'—'}</td>`;
+      frag.appendChild(tr);
+    });
+  }
+  DOM.tblBody.appendChild(frag);
+  setText('tbl-count', `${total.toLocaleString('pt-BR')} registros${search?' (filtrado)':''}`);
+  renderPager(totalPages);
+}
+
+function renderPager(totalPages) {
+  if (!DOM.pager) return;
+  const cur = State.currentPage;
+  const s = (cur-1)*PAGE_SIZE+1;
+  const e = Math.min(cur*PAGE_SIZE, State.tableData.length);
+
+  const pageButtons = () => {
+    const btns=[];
+    const range=(s,e)=>{ for(let i=s;i<=e;i++) btns.push(i); };
+    if (totalPages<=7) range(1,totalPages);
+    else if (cur<=4)   { range(1,5); btns.push('...'); btns.push(totalPages); }
+    else if (cur>=totalPages-3) { btns.push(1); btns.push('...'); range(totalPages-4,totalPages); }
+    else { btns.push(1); btns.push('...'); range(cur-1,cur+1); btns.push('...'); btns.push(totalPages); }
+    return btns;
+  };
+
+  DOM.pager.innerHTML = `
+    <span>${s.toLocaleString('pt-BR')}–${e.toLocaleString('pt-BR')} de ${State.tableData.length.toLocaleString('pt-BR')}</span>
+    <div class="pager-btns">
+      <button class="pg-btn" ${cur===1?'disabled':''} onclick="App.goPage(${cur-1})">‹</button>
+      ${pageButtons().map(p => p==='...'
+        ? `<button class="pg-btn" disabled>…</button>`
+        : `<button class="pg-btn ${p===cur?'active':''}" onclick="App.goPage(${p})">${p}</button>`
+      ).join('')}
+      <button class="pg-btn" ${cur===totalPages?'disabled':''} onclick="App.goPage(${cur+1})">›</button>
+    </div>`;
+}
+
+function goPage(n) {
+  State.currentPage = n;
+  renderTable();
+  $('tab-explorer')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ─── Navigation ──────────────────────────────────────────── */
+function switchTab(tab, el) {
+  $$('.nav-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['dashboard','analistas','areas','sla','trends','observations','explorer','indicadores'].forEach(t => {
+    const te = $('tab-'+t);
+    if (te) te.classList.add('hidden');
+  });
+  const target = $('tab-'+tab);
+  if (target) target.classList.remove('hidden');
+  setText('view-title', tabTitle(tab));
+  State.activeTab = tab;
+  if (State.rawData.length) renderChartsForTab(tab);
+}
+
+function switchExplorerTab(tab, btn) {
+  $$('.sub-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  State.explorerTab = tab;
+  State.currentPage = 1;
+  renderTable();
+}
+
+function drillDown(key, value) {
+  const filterMap = {
+    software:'f-software', ccusto:'f-ccusto', diretoria:'f-diretoria',
+    status:'f-status', analista:'f-analista', atendimento:'f-atendimento'
+  };
+  if (key === 'all') { resetFilters(); return; }
+  if (key === 'sla-out') {
+    resetFilters();
+    State.filteredData = State.rawData.filter(r=>r.isCrit);
+    updateFilterBadge();
+    render();
+    const nav = document.querySelector('[data-tab="explorer"]');
+    switchTab('explorer', nav);
+    State.explorerTab = 'sla';
+    $$('.sub-tab').forEach(b => { if(b.textContent.includes('Fora')) b.classList.add('active'); else b.classList.remove('active'); });
+    return;
+  }
+  if (key === 'sla-in') {
+    resetFilters();
+    State.filteredData = State.rawData.filter(r=>r.slaOk===true);
+    updateFilterBadge();
+    render();
+    const nav = document.querySelector('[data-tab="explorer"]');
+    switchTab('explorer', nav);
+    State.explorerTab = 'all';
+    $$('.sub-tab').forEach((b,i) => b.classList.toggle('active', i===0));
+    return;
+  }
+  if (filterMap[key]) {
+    const el = $(filterMap[key]);
+    if (el) { el.value = value; el.classList.add('active'); }
+    refresh();
+  }
+  const nav = document.querySelector('[data-tab="explorer"]');
+  switchTab('explorer', nav);
+  State.explorerTab = 'all';
+  $$('.sub-tab').forEach((b,i) => b.classList.toggle('active', i===0));
+}
+
+/* ─── Export XLSX ─────────────────────────────────────────── */
+function exportXLSX() {
+  if (!State.rawData.length) { toast('Nenhum dado carregado para exportar.','error'); return; }
+  if (typeof XLSX === 'undefined') { toast('SheetJS não disponível.','error'); return; }
+
+  const data     = State.filteredData;
+  const enc      = data.filter(r=>r.status==='Encerrado');
+  const abertos  = data.filter(r=>r.status==='Aberto');
+  const out      = data.filter(r=>r.isCrit);
+  const withT    = data.filter(r=>r.mttr!==null);
+  const slaIn    = withT.filter(r=>r.slaOk);
+  const avgD     = withT.length ? (withT.reduce((s,r)=>s+r.mttr,0)/withT.length/24).toFixed(2) : '';
+  const comp     = withT.length ? (slaIn.length/withT.length*100).toFixed(1)+'%' : '';
+  const srcLabel = State.activeSource === 'req' ? 'Requisições' : 'Incidentes';
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: KPI Summary
+  const kpiRows = [
+    ['Indicador','Valor','Observação'],
+    ['Fonte de Dados', srcLabel, ''],
+    ['Total de Chamados', data.length, ''],
+    ['Encerrados', enc.length, data.length?((enc.length/data.length)*100).toFixed(1)+'%':''],
+    ['Abertos',   abertos.length, data.length?((abertos.length/data.length)*100).toFixed(1)+'%':''],
+    ['Dentro do SLA (≤2 dias)', slaIn.length, withT.length?(slaIn.length/withT.length*100).toFixed(1)+'%':''],
+    ['Fora do SLA (>2 dias)',  out.length,   withT.length?(out.length/withT.length*100).toFixed(1)+'%':''],
+    ['Compliance SLA', comp, ''],
+    ['Tempo Médio (dias)', avgD, 'Chamados com encerramento'],
+    ['Gerado em', new Date().toLocaleString('pt-BR'), ''],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpiRows), 'Resumo KPIs');
+
+  const toRow = r => ({
+    'Protocolo':      r.id,
+    'Classificação':  r.classif || '',
+    'Abertura':       r.abertura    ? r.abertura.toLocaleDateString('pt-BR')    : '',
+    'Encerramento':   r.encerramento? r.encerramento.toLocaleDateString('pt-BR'): '',
+    'Analista':       r.analista,
+    'Atendimento':    r.atendimento,
+    'Status':         r.status,
+    'Centro de Custo':r.ccusto,
+    'Diretoria':      r.diretoria,
+    'Software':       r.software,
+    'Observações':    r.obs || '',
+    'Tempo (dias)':   r.mttr !== null ? +(r.mttr/24).toFixed(2) : '',
+    'SLA':            r.isCrit ? 'Fora do SLA' : r.slaOk === true ? 'Dentro do SLA' : '—',
+  });
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.map(toRow)), 'Base Completa');
+
+  const addIf = (rows, name) => { if (rows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.map(toRow)), name); };
+  addIf(out,    'Fora do SLA');
+  addIf(abertos,'Abertos');
+
+  // Top 10 Softwares
+  const swGroups = groupCount(data,'software').slice(0,10);
+  const swRows = swGroups.map(([sw,cnt],i) => ({
+    'Posição':i+1,'Software':sw,'Quantidade':cnt,
+    'Percentual':data.length?((cnt/data.length)*100).toFixed(1)+'%':''
+  }));
+  if (swRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(swRows), 'Top 10 Softwares');
+
+  // Ranking Analistas
+  const byAnalista = groupBy(data,'analista');
+  const analRows = Object.entries(byAnalista)
+    .map(([name,rows]) => {
+      const wt  = rows.filter(r=>r.mttr!==null);
+      const avgT= wt.length ? (wt.reduce((s,r)=>s+r.mttr,0)/wt.length/24).toFixed(2) : '';
+      const cmp = wt.length ? (wt.filter(r=>r.slaOk).length/wt.length*100).toFixed(1)+'%' : '';
+      return {
+        'Analista':name,'Total':rows.length,
+        'Encerrados':rows.filter(r=>r.status==='Encerrado').length,
+        'Abertos':rows.filter(r=>r.status==='Aberto').length,
+        'Fora SLA':rows.filter(r=>r.isCrit).length,
+        'Tempo Médio (dias)':avgT,'Compliance SLA':cmp
+      };
+    })
+    .sort((a,b)=>b.Total-a.Total);
+  if (analRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(analRows), 'Ranking Analistas');
+
+  // Observations analysis
+  const catMap = {};
+  data.forEach(r => { catMap[r.obsCategory] = (catMap[r.obsCategory]||0)+1; });
+  const obsRows = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([cat,cnt]) => ({
+    'Categoria':cat,'Quantidade':cnt,
+    'Percentual':data.length?((cnt/data.length)*100).toFixed(1)+'%':''
+  }));
+  if (obsRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(obsRows), 'Análise Observações');
+
+  XLSX.writeFile(wb, `Chamados_${srcLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Relatório XLSX exportado com sucesso!', 'success');
+}
+
+/* ─── Public API ──────────────────────────────────────────── */
+return { init, refresh, resetFilters, drillDown, switchTab, goPage, exportXLSX, switchExplorerTab, switchSource };
+})();
+
+document.addEventListener('DOMContentLoaded', App.init);
+</script>
+</body>
+</html>

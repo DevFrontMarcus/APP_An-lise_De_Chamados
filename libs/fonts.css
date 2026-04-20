@@ -1,0 +1,15 @@
+/* Baixe os arquivos .woff2 das fontes DM Sans e DM Mono do Google Fonts e coloque-os em ./fonts/. Ajuste os caminhos abaixo conforme necessário. */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  src: url('./fonts/dm-sans-v14-latin.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  src: url('./fonts/dm-mono-v13-latin.woff2') format('woff2');
+  font-display: swap;
+}
