@@ -44,5 +44,4 @@ Este projeto é uma aplicação web interativa para acompanhamento, análise e v
 - As bibliotecas estão incluídas localmente na pasta `libs`.
 - Suporte a modo claro/escuro e navegação por teclado.
 
-## Autoria
-Desenvolvido para o acompanhamento de chamados do projeto SG SAM na Aché.
+
